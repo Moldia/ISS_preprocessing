@@ -95,6 +95,9 @@ def leica_mipping(input_dirs, output_dir_prefix):
     the input is a list of the file paths to the files.
     used to MIP files from leica when exported as tiffs. 
 
+
+
+
     '''
     from os import listdir
     from os.path import isfile, join
@@ -113,7 +116,7 @@ def leica_mipping(input_dirs, output_dir_prefix):
         i = i.replace("%20", " ") # needs to be done in linux thanks to the spaces
         input_dirs_reformatted.append(i)
     
-    for i in input_dirs_reformatted:
+    for ö,i in enumerate(input_dirs_reformatted):
         files = os.listdir(i)
         tifs =  [k for k in files if 'dw' not in k] # filter for deconvolved images
         tifs =  [k for k in tifs if '.tif' in k]
@@ -131,7 +134,7 @@ def leica_mipping(input_dirs, output_dir_prefix):
         # TODO: CONSIDER DOING THIS FROM THE METADATA? 
 
         # GET BASES
-        bases = [i.split('/')[5].split('cycle')[1]]
+        bases = str((ö)+1) #[i.split('/')[5].split('cycle')[1]]
 
         # GET TILES
         tiles = sorted(split_underscore[1].unique())
@@ -144,17 +147,18 @@ def leica_mipping(input_dirs, output_dir_prefix):
         # GET CHANNELS
         channels = split_underscore[3].unique()
             
-        if len(regions) == 1:
-            output_dir = output_dir_prefix + '_R1'
-            folder_output = output_dir + '/preprocessing/mipped/'
-        else: 
-            output_dir = output_dir_prefix + '_R'+region.split('Region')[1].split('_')[0]
-            folder_output = output_dir + '/preprocessing/mipped/'
-        if not os.path.exists(folder_output):
-            os.makedirs(folder_output)
+        
         
         # IF THE SCAN IS BIG ENOUGH, THE SECTION WILL BE DIVIDED INTO DIFFERENT REGIONS. THEREFORE WE NEED TO CHECK THIS IN THE FILES
         for region in regions: 
+            if len(regions) == 1:
+                output_dir = output_dir_prefix + '_R1'
+                folder_output = output_dir + '/preprocessing/mipped/'
+            else: 
+                output_dir = output_dir_prefix + '_R'+region.split('Region')[1].split('_')[0]
+                folder_output = output_dir + '/preprocessing/mipped/'
+            if not os.path.exists(folder_output):
+                os.makedirs(folder_output)
             tifs =  [k for k in tifs if region in k]
             for ååå, w in enumerate(sorted(bases)):
                 imgs = []
@@ -168,7 +172,7 @@ def leica_mipping(input_dirs, output_dir_prefix):
 
                     # ENSURE THAT WE DO NOT CREATE FILES THAT HAVE ALREADY BEEN CREATED
                     if len(strings_with_substring) < 4:
-                        tifs_base_tile = [k for k in tifs if str(tile_int)+'--' in k]
+                        tifs_base_tile = [k for k in tifs if str(tile)+'--' in k]
                         for å,z in enumerate(sorted(list(channels))):
                             tifs_base_tile_channel = [k for k in tifs_base_tile if str(z) in k]
                             
