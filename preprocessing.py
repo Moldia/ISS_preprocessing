@@ -39,15 +39,7 @@ def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_
     rounds = list(np.unique(onlyfiles_split_channel[cycle_split]))
 
     for i, round_number in enumerate(rounds):
-        onlytifs_round_filt = [l for l in onlytifs if '_'+round_number+'_' in l]
-        imgs = []
-        for i in (tiles):
-            stacked = np.empty((5, 2048, 2048))
-            tile_filtered = [k for k in onlytifs_round_filt if i in k]
-            for n,image_file in enumerate(tile_filtered):
-                image_int = tifffile.imread(exported_directory +'/'+image_file)
-                stacked[n] = image_int
-            imgs.append(stacked)
+        onlytifs_round_filt = [l for l in onlytifs if '_'+round_number+'_' in l]        
 
         metadatafiles =  [k for k in onlyfiles if 'info.xml' in k]
         metadatafiles_filt =  [k for k in metadatafiles if '_'+round_number+'_' in k]
@@ -70,24 +62,36 @@ def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_
             df = pd.DataFrame(dictionary) 
             positions = np.array(df).astype(int)
 
-            pixel_size = 0.1625
-            with tifffile.TiffWriter(output_directory+'/cycle_'+str(round_number)+'.ome.tif', bigtiff=True) as tif:
-                for img, p in zip(imgs, positions.astype(int)):
-                    metadata = {
-                        'Pixels': {
-                            'PhysicalSizeX': pixel_size,
-                            'PhysicalSizeXUnit': 'µm',
-                            'PhysicalSizeY': pixel_size,
-                            'PhysicalSizeYUnit': 'µm'
-                        },
-                        'Plane': {
-                            'PositionX': [p[0]*pixel_size]*img.shape[0],
-                            'PositionY': [p[1]*pixel_size]*img.shape[0]
-                        }
+        
 
+        with tifffile.TiffWriter(output_directory+'/cycle_'+str(round_number)+'.ome.tif', bigtiff=True) as tif:
+            for i in tqdm(range(len(tiles))):
+                position = positions[i]
+                tile = tiles[i]
+                tile_filtered = [k for k in onlytifs if 's'+tile+'_' in k]
+                tile_filtered = [k for k in onlytifs_round_filt if i in k]
+                stacked = np.empty((5, 2048, 2048))
+
+
+                for n,image_file in enumerate(tile_filtered):
+                    image_int = tifffile.imread(join(exported_directory,image_file))
+                    stacked[n] = image_int.astype('uint16')
+                pixel_size = 0.1625
+                metadata = {
+                    'Pixels': {
+                        'PhysicalSizeX': pixel_size,
+                        'PhysicalSizeXUnit': 'µm',
+                        'PhysicalSizeY': pixel_size,
+                        'PhysicalSizeYUnit': 'µm'
+                    },
+                    'Plane': {
+                        'PositionX': [position[0]*pixel_size]*stacked.shape[0],
+                        'PositionY': [position[1]*pixel_size]*stacked.shape[0]
                     }
-                    tif.write(img.astype('uint16'), metadata=metadata)
 
+                }
+                tif.write(stacked.astype('uint16'),metadata=metadata)
+                
 def leica_mipping(input_dirs, output_dir_prefix):
 
     '''
