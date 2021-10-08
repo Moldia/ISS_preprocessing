@@ -9,6 +9,7 @@ import cv2
 import math
 import ashlar.scripts.ashlar as ashlar
 import re
+from tqdm import tqdm
 
 def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_split = 2):
     '''
@@ -78,21 +79,21 @@ def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_
                     stacked[n] = image_int.astype('uint16')
                 pixel_size = 0.1625
                 metadata = {
-                    'Pixels': {
-                        'PhysicalSizeX': pixel_size,
-                        'PhysicalSizeXUnit': 'µm',
-                        'PhysicalSizeY': pixel_size,
-                        'PhysicalSizeYUnit': 'µm'
-                    },
-                    'Plane': {
-                        'PositionX': [position[0]*pixel_size]*stacked.shape[0],
-                        'PositionY': [position[1]*pixel_size]*stacked.shape[0]
-                    }
+                                'Pixels': {
+                                    'PhysicalSizeX': pixel_size,
+                                    'PhysicalSizeXUnit': 'µm',
+                                    'PhysicalSizeY': pixel_size,
+                                    'PhysicalSizeYUnit': 'µm'
+                                },
+                                'Plane': {
+                                    'PositionX': [position[0]*pixel_size]*stacked.shape[0],
+                                    'PositionY': [position[1]*pixel_size]*stacked.shape[0]
+                                }
 
-                }
+                            }
                 tif.write(stacked.astype('uint16'),metadata=metadata)
-                
-def leica_mipping(input_dirs, output_dir_prefix):
+
+def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048]):
 
     '''
 
@@ -113,13 +114,14 @@ def leica_mipping(input_dirs, output_dir_prefix):
     from tifffile import imread
     from tqdm import tqdm
     import re
+    import shutil
     # only needed on linux
-    
+
     input_dirs_reformatted = []
     for i in input_dirs: 
         i = i.replace("%20", " ") # needs to be done in linux thanks to the spaces
         input_dirs_reformatted.append(i)
-    
+
     for ö,i in enumerate(input_dirs_reformatted):
         files = os.listdir(i)
         tifs =  [k for k in files if 'dw' not in k] # filter for deconvolved images
@@ -132,66 +134,77 @@ def leica_mipping(input_dirs, output_dir_prefix):
         for j in regions_int:
             regions.append(j)
         regions = list(np.unique(regions))
-        tifs =  [k for k in tifs if 'Corrected' in k]
-        split_underscore = pd.DataFrame(tifs)[0].str.split('--', expand = True)
-        
-        # TODO: CONSIDER DOING THIS FROM THE METADATA? 
 
-        # GET BASES
-        bases = str((ö)+1) #[i.split('/')[5].split('cycle')[1]]
-
-        # GET TILES
-        tiles = sorted(split_underscore[1].unique())
-        tiles_df = pd.DataFrame(tiles)
-        tiles_df['indexNumber'] = [int(i.split('e')[-1]) for i in tiles_df[0]]
-        tiles_df.sort_values(by = ['indexNumber'], ascending = [True], inplace = True)
-        tiles_df.drop('indexNumber', 1, inplace = True)
-        tiles = list(tiles_df[0])
-        
-        # GET CHANNELS
-        channels = split_underscore[3].unique()
-            
-        
-        
         # IF THE SCAN IS BIG ENOUGH, THE SECTION WILL BE DIVIDED INTO DIFFERENT REGIONS. THEREFORE WE NEED TO CHECK THIS IN THE FILES
         for region in regions: 
+            tifs_filt =  [k for k in tifs if region in k]
+            bases = str((ö)+1) #[i.split('/')[5].split('cycle')[1]]
+            split_underscore = pd.DataFrame(tifs_filt)[0].str.split('--', expand = True)
+            # GET TILES
+            tiles = sorted(split_underscore[1].unique())
+            tiles_df = pd.DataFrame(tiles)
+            tiles_df['indexNumber'] = [int(i.split('e')[-1]) for i in tiles_df[0]]
+            tiles_df.sort_values(by = ['indexNumber'], ascending = [True], inplace = True)
+            tiles_df.drop('indexNumber', 1, inplace = True)
+            tiles = list(tiles_df[0])
+
+            # GET CHANNELS
+            channels = split_underscore[3].unique()
             if len(regions) == 1:
-                output_dir = output_dir_prefix + '_R1'
+                output_dir = output_dir_prefix
                 folder_output = output_dir + '/preprocessing/mipped/'
             else: 
                 output_dir = output_dir_prefix + '_R'+region.split('Region')[1].split('_')[0]
                 folder_output = output_dir + '/preprocessing/mipped/'
             if not os.path.exists(folder_output):
                 os.makedirs(folder_output)
-            tifs =  [k for k in tifs if region in k]
+
             for ååå, w in enumerate(sorted(bases)):
                 imgs = []
                 if not os.path.exists(folder_output +'/Base_'+w):
                             os.makedirs(folder_output +'/Base_'+w)
+                try: 
+                    file_to_copy = join(i,'Metadata',([k for k in os.listdir(join(i,'Metadata')) if region in k][0]))
+                    #shutil.copytree(join(i,'Metadata'), join(folder_output,('Base_'+w),'MetaData'))
+                    if not os.path.exists(join(folder_output,('Base_'+w),'MetaData')):
+                            os.makedirs(join(folder_output,('Base_'+w),'MetaData'))
+                    shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
+                except FileExistsError:
+                    print(' ')
 
                 # LOOP OVER THE TILES TO MIP
-                for tile in (tiles):
+                for _tile in tqdm(range(len(tiles))):
+                    tile = tiles[_tile]
                     tile_for_name = re.split('(\d+)', tile)[1]
                     strings_with_substring = [string for string in os.listdir(folder_output +'/Base_'+w) if str(tile_for_name) in string]
 
                     # ENSURE THAT WE DO NOT CREATE FILES THAT HAVE ALREADY BEEN CREATED
-                    if len(strings_with_substring) < 4:
-                        tifs_base_tile = [k for k in tifs if str(tile)+'--' in k]
-                        for å,z in enumerate(sorted(list(channels))):
-                            tifs_base_tile_channel = [k for k in tifs_base_tile if str(z) in k]
+                    #if len(strings_with_substring) < 4:
+                    tifs_base_tile = [k for k in tifs_filt if str(tile)+'--' in k]
+                    for å,z in enumerate(sorted(list(channels))):
+                        tifs_base_tile_channel = [k for k in tifs_base_tile if str(z) in k]
+                        # DEFINE IMAGE TO USE AS GROUND ZERO 
+                        maxi = np.zeros((image_dimension[0],image_dimension[1]))
+                        for n,q in enumerate(tifs_base_tile_channel):
                             
-                            # DEFINE IMAGE TO USE AS GROUND ZERO 
-                            maxi = np.zeros((2048,2048))
-                            for n,q in enumerate(tifs_base_tile_channel):
+                            try:
                                 im_array = imread(i + '/' +q)
-                                inds = im_array > maxi # find where image intensity > max intensity
-                                maxi[inds] = im_array[inds]
-                            maxi = maxi.astype('uint16')
+                            except:
+                                print('image corrupted, reading black file instead.')
+                                im_array = np.zeros((image_dimension[0],image_dimension[1]))
 
-                            # WRITE FILE
-                            tifffile.imwrite(folder_output +'/Base_'+w+'/Base_'+w+'_s'+str(tile_for_name)+'_'+z, maxi)
-
-def leica_OME_tiff(directory_base, output_directory):
+                            inds = im_array > maxi # find where image intensity > max intensity
+                            maxi[inds] = im_array[inds]
+                        maxi = maxi.astype('uint16')
+                        # WRITE FILE
+                        tifffile.imwrite(folder_output +'/Base_'+w+'/Base_'+w+'_s'+str(tile_for_name)+'_'+z, maxi)
+                    #else: 
+                    #    continue
+def leica_OME_tiff(directory_base, 
+                output_directory, 
+                pixel_size = 0.1625, 
+                image_dimension = [2048, 2048],
+                channels = 5):
 
     import tifffile
     import numpy as np
@@ -205,6 +218,9 @@ def leica_OME_tiff(directory_base, output_directory):
     from xml.dom import minidom
     from pathlib import Path
     from tqdm import tqdm
+
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
 
     folders = os.listdir(directory_base)
     
@@ -258,11 +274,11 @@ def leica_OME_tiff(directory_base, output_directory):
 
                 tile_filtered = [k for k in onlytifs if 's'+tile+'_' in k]
                 tile_filtered =  [k for k in tile_filtered if '._' not in k]
-                stacked = np.empty((5, 2048, 2048))
+                stacked = np.empty((channels, image_dimension[0], image_dimension[1]))
                 for n,image_file in enumerate(tile_filtered):
                     image_int = tifffile.imread(join(exported_directory,image_file))
                     stacked[n] = image_int.astype('uint16')
-                pixel_size = 0.1625
+                pixel_size = pixel_size
                 metadata = {
                                 'Pixels': {
                                     'PhysicalSizeX': pixel_size,
@@ -277,6 +293,7 @@ def leica_OME_tiff(directory_base, output_directory):
 
                             }
                 tif.write(stacked.astype('uint16'),metadata=metadata)
+
 
 
 import ashlar.scripts.ashlar as ashlar
