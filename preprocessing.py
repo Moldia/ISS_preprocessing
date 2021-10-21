@@ -198,7 +198,7 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
                         maxi = maxi.astype('uint16')
                         # WRITE FILE
                         tifffile.imwrite(folder_output +'/Base_'+w+'/Base_'+w+'_s'+str(tile_for_name)+'_'+z, maxi)
-                    #else: 
+                    #else:  
                     #    continue
 def leica_OME_tiff(directory_base, 
                 output_directory, 
