@@ -431,29 +431,29 @@ def preprocessing_main_leica(input_dirs,
                          align_channel = 4, 
                          tile_dimension = 6000):
 
-import ISS_processing.preprocessing as preprocessing
-import os
-import pandas as pd
+    import ISS_processing.preprocessing as preprocessing
+    import os
+    import pandas as pd
 
-preprocessing.leica_mipping(input_dirs=input_dirs, output_dir_prefix = output_location)
+    preprocessing.leica_mipping(input_dirs=input_dirs, output_dir_prefix = output_location)
 
-if regions > 1:
-    for i in range(regions):
-        path = output_location +'/R'+str(i+1)
+    if regions > 1:
+        for i in range(regions):
+            path = output_location +'/R'+str(i+1)
 
-        # create leica OME_tiffs
-        preprocessing.leica_OME_tiff(directory_base = path+'/preprocessing/mipped/', 
-                                     output_directory = path+'/preprocessing/OME_tiffs/')
+            # create leica OME_tiffs
+            preprocessing.leica_OME_tiff(directory_base = path+'/preprocessing/mipped/', 
+                                         output_directory = path+'/preprocessing/OME_tiffs/')
 
-        # align and stitch images
-        OME_tiffs = os.listdir(path+'/preprocessing/OME_tiffs/')
-        preprocessing.ashlar_wrapper(files = OME_tiffs, 
-                                     output = path+'/preprocessing/stitched/', 
-                                     align_channel=align_channel)
+            # align and stitch images
+            OME_tiffs = os.listdir(path+'/preprocessing/OME_tiffs/')
+            preprocessing.ashlar_wrapper(files = OME_tiffs, 
+                                         output = path+'/preprocessing/stitched/', 
+                                         align_channel=align_channel)
 
-        # retile stitched images
-        preprocessing.tile_stitched_images(image_path = path+'/preprocessing/stitched/',
-                               outpath = path+'/preprocessing/ReslicedTiles/', 
-                               tile_dim=tile_dimension)
+            # retile stitched images
+            preprocessing.tile_stitched_images(image_path = path+'/preprocessing/stitched/',
+                                   outpath = path+'/preprocessing/ReslicedTiles/', 
+                                   tile_dim=tile_dimension)
 
     return
