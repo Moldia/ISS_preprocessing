@@ -113,7 +113,7 @@ def leica_mipping(input_dirs, output_dir_prefix):
         i = i.replace("%20", " ") # needs to be done in linux thanks to the spaces
         input_dirs_reformatted.append(i)
     
-    for i in input_dirs_reformatted:
+    for ö,i in enumerate(input_dirs_reformatted):
         files = os.listdir(i)
         tifs =  [k for k in files if 'dw' not in k] # filter for deconvolved images
         tifs =  [k for k in tifs if '.tif' in k]
@@ -131,7 +131,7 @@ def leica_mipping(input_dirs, output_dir_prefix):
         # TODO: CONSIDER DOING THIS FROM THE METADATA? 
 
         # GET BASES
-        bases = [i.split('/')[5].split('cycle')[1]]
+        bases = bases = str((ö)+1) #[i.split('/')[5].split('cycle')[1]]
 
         # GET TILES
         tiles = sorted(split_underscore[1].unique())
