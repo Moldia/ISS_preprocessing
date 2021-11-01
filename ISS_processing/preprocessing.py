@@ -453,7 +453,7 @@ def preprocessing_main_leica(input_dirs,
 
     if regions > 1:
         for i in range(regions):
-            path = output_location +'/R'+str(i+1)
+            path = output_location +'_R'+str(i+1)
 
             # create leica OME_tiffs
             preprocessing.leica_OME_tiff(directory_base = path+'/preprocessing/mipped/', 
