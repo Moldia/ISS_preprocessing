@@ -265,7 +265,7 @@ def leica_OME_tiff(directory_base, output_directory):
                 tile_filtered = [k for k in onlytifs if 's'+tile+'_' in k]
                 tile_filtered =  [k for k in tile_filtered if '._' not in k]
                 stacked = np.empty((5, 2048, 2048))
-                for n,image_file in enumerate(tile_filtered):
+                for n,image_file in enumerate(sorted(tile_filtered)):
                     image_int = tifffile.imread(join(exported_directory,image_file))
                     stacked[n] = image_int.astype('uint16')
                 pixel_size = 0.1625
