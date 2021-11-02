@@ -161,9 +161,9 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
                 try: 
                     file_to_copy = join(i,'Metadata',([k for k in os.listdir(join(i,'Metadata')) if region in k][0]))
                     #shutil.copytree(join(i,'Metadata'), join(folder_output,('Base_'+w),'MetaData'))
-                    if not os.path.exists(join(folder_output,('Base_'+w),'MetaData')):
-                            os.makedirs(join(folder_output,('Base_'+w),'MetaData'))
-                    shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
+                    if not os.path.exists(join(folder_output,('Base_'+w),'Metadata')):
+                            os.makedirs(join(folder_output,('Base_'+w),'Metadata'))
+                    shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'Metadata'))
                 except FileExistsError:
                     print(' ')
 
@@ -213,7 +213,9 @@ def leica_OME_tiff(directory_base, output_directory):
     from tqdm import tqdm
 
     folders = os.listdir(directory_base)
-    
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+        
     for folder in folders:
         exported_directory = join(directory_base,folder)
         onlyfiles = listdir(exported_directory)
