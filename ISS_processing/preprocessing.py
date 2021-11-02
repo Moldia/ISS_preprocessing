@@ -85,7 +85,7 @@ def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_
                             'PositionY': [p[1]*pixel_size]*img.shape[0]
                         }
 
-                    }
+                    }OME_tiffs
                     tif.write(img.astype('uint16'), metadata=metadata)
 
 def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048]):
@@ -463,7 +463,7 @@ def preprocessing_main_leica(input_dirs,
 
             # align and stitch images
             OME_tiffs = os.listdir(path+'/preprocessing/OME_tiffs/')
-            OME_tiffs = [path + sub for sub in OME_tiffs]
+            OME_tiffs = [path +'/preprocessing/OME_tiffs/' + sub for sub in OME_tiffs]
             preprocessing.ashlar_wrapper(files = OME_tiffs, 
                                          output = path+'/preprocessing/stitched/', 
                                          align_channel=align_channel)
