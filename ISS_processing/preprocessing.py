@@ -463,6 +463,7 @@ def preprocessing_main_leica(input_dirs,
 
             # align and stitch images
             OME_tiffs = os.listdir(path+'/preprocessing/OME_tiffs/')
+            OME_tiffs = [path + sub for sub in OME_tiffs]
             preprocessing.ashlar_wrapper(files = OME_tiffs, 
                                          output = path+'/preprocessing/stitched/', 
                                          align_channel=align_channel)
