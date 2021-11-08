@@ -85,7 +85,7 @@ def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_
                             'PositionY': [p[1]*pixel_size]*img.shape[0]
                         }
 
-                    }OME_tiffs
+                    }
                     tif.write(img.astype('uint16'), metadata=metadata)
 
 def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048]):
