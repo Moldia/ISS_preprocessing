@@ -10,6 +10,16 @@ import math
 import ashlar.scripts.ashlar as ashlar
 import re
 
+
+import os
+import pandas as pd
+import tifffile
+import numpy as np
+import cv2
+import math
+import ashlar.scripts.ashlar as ashlar
+import re
+
 def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_split = 2):
     '''
     using this function is predicated on the fact that you are using the nilsson SOP for naming files. this only works if we have rather small sections. 
@@ -161,9 +171,9 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
                 try: 
                     file_to_copy = join(i,'Metadata',([k for k in os.listdir(join(i,'Metadata')) if region in k][0]))
                     #shutil.copytree(join(i,'Metadata'), join(folder_output,('Base_'+w),'MetaData'))
-                    if not os.path.exists(join(folder_output,('Base_'+w),'Metadata')):
-                            os.makedirs(join(folder_output,('Base_'+w),'Metadata'))
-                    shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'Metadata'))
+                    if not os.path.exists(join(folder_output,('Base_'+w),'MetaData')):
+                            os.makedirs(join(folder_output,('Base_'+w),'MetaData'))
+                    shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
                 except FileExistsError:
                     print(' ')
 
@@ -196,7 +206,6 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
                     #else: 
                     #    continue
 
-
 def leica_OME_tiff(directory_base, output_directory):
 
     import tifffile
@@ -213,9 +222,7 @@ def leica_OME_tiff(directory_base, output_directory):
     from tqdm import tqdm
 
     folders = os.listdir(directory_base)
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-        
+    
     for folder in folders:
         exported_directory = join(directory_base,folder)
         onlyfiles = listdir(exported_directory)
@@ -236,11 +243,11 @@ def leica_OME_tiff(directory_base, output_directory):
         rounds = list(np.unique(onlyfiles_split_tiles[0]))
         
         
-        metadatafiles = listdir(join(exported_directory, 'Metadata'))
+        metadatafiles = listdir(join(exported_directory, 'MetaData'))
         metadatafiles =  [k for k in metadatafiles if 'IOManagerConfiguation.xlif' not in k]
 
         for p, meta in enumerate(metadatafiles):
-            mydoc = minidom.parse(join(exported_directory, 'Metadata',meta) )
+            mydoc = minidom.parse(join(exported_directory, 'MetaData',meta) )
             tile =[]
             x =[]
             y =[]
@@ -267,7 +274,7 @@ def leica_OME_tiff(directory_base, output_directory):
                 tile_filtered = [k for k in onlytifs if 's'+tile+'_' in k]
                 tile_filtered =  [k for k in tile_filtered if '._' not in k]
                 stacked = np.empty((5, 2048, 2048))
-                for n,image_file in enumerate(sorted(tile_filtered)):
+                for n,image_file in enumerate(tile_filtered):
                     image_int = tifffile.imread(join(exported_directory,image_file))
                     stacked[n] = image_int.astype('uint16')
                 pixel_size = 0.1625
@@ -438,39 +445,42 @@ def tile_stitched_images(image_path,outpath, tile_dim=2000):
     tile_pos = pd.DataFrame()
     tile_pos['x'] = x
     tile_pos['y'] = y
+
     tile_pos.to_csv(outpath+'/'+'tilepos.csv', header=False, index=False)
     return
-    
-def preprocessing_main_leica(input_dirs, 
-                         output_location,
-                         regions = 2, 
-                         align_channel = 4, 
-                         tile_dimension = 6000):
+def preprocessing_main_leica_new(input_dirs, 
+                            output_location,
+                            regions_to_process = 2, 
+                            align_channel = 4, 
+                            tile_dimension = 6000, 
+                            mip = True):
 
     import ISS_processing.preprocessing as preprocessing
     import os
     import pandas as pd
-
-    preprocessing.leica_mipping(input_dirs=input_dirs, output_dir_prefix = output_location)
-
-    if regions > 1:
-        for i in range(regions):
+    
+    if mip == True:
+        preprocessing.leica_mipping(input_dirs=input_dirs, output_dir_prefix = output_location)
+    else: 
+        print('not mipping')
+        
+    if regions_to_process > 1:
+        for i in range(regions_to_process):
             path = output_location +'_R'+str(i+1)
-
+            
             # create leica OME_tiffs
-            preprocessing.leica_OME_tiff(directory_base = path+'/preprocessing/mipped/', 
-                                         output_directory = path+'/preprocessing/OME_tiffs/')
-
+            leica_OME_tiff(directory_base = path+'/preprocessing/mipped/', 
+                                            output_directory = path+'/preprocessing/OME_tiffs/')
+            
             # align and stitch images
             OME_tiffs = os.listdir(path+'/preprocessing/OME_tiffs/')
-            OME_tiffs = [path +'/preprocessing/OME_tiffs/' + sub for sub in OME_tiffs]
-            preprocessing.ashlar_wrapper(files = OME_tiffs, 
-                                         output = path+'/preprocessing/stitched/', 
-                                         align_channel=align_channel)
-
+            ashlar_wrapper(files = OME_tiffs, 
+                                            output = path+'/preprocessing/stitched/', 
+                                            align_channel=align_channel)
+            
             # retile stitched images
-            preprocessing.tile_stitched_images(image_path = path+'/preprocessing/stitched/',
-                                   outpath = path+'/preprocessing/ReslicedTiles/', 
-                                   tile_dim=tile_dimension)
+            tile_stitched_images(image_path = path+'/preprocessing/stitched/',
+                                    outpath = path+'/preprocessing/ReslicedTiles/', 
+                                    tile_dim=tile_dimension)
 
     return
