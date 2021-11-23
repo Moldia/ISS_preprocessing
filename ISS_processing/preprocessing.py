@@ -10,16 +10,6 @@ import math
 import ashlar.scripts.ashlar as ashlar
 import re
 
-
-import os
-import pandas as pd
-import tifffile
-import numpy as np
-import cv2
-import math
-import ashlar.scripts.ashlar as ashlar
-import re
-
 def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_split = 2):
     '''
     using this function is predicated on the fact that you are using the nilsson SOP for naming files. this only works if we have rather small sections. 
@@ -222,7 +212,9 @@ def leica_OME_tiff(directory_base, output_directory):
     from tqdm import tqdm
 
     folders = os.listdir(directory_base)
-    
+    import os
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
     for folder in folders:
         exported_directory = join(directory_base,folder)
         onlyfiles = listdir(exported_directory)
@@ -484,3 +476,8 @@ def preprocessing_main_leica(input_dirs,
                                     tile_dim=tile_dimension)
 
     return
+
+
+
+
+
