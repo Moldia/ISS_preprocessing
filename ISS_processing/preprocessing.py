@@ -212,9 +212,9 @@ def leica_OME_tiff(directory_base, output_directory):
     from tqdm import tqdm
 
     folders = os.listdir(directory_base)
-    import os
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
+        
     for folder in folders:
         exported_directory = join(directory_base,folder)
         onlyfiles = listdir(exported_directory)
@@ -266,7 +266,7 @@ def leica_OME_tiff(directory_base, output_directory):
                 tile_filtered = [k for k in onlytifs if 's'+tile+'_' in k]
                 tile_filtered =  [k for k in tile_filtered if '._' not in k]
                 stacked = np.empty((5, 2048, 2048))
-                for n,image_file in enumerate(tile_filtered):
+                for n,image_file in enumerate(sorted(tile_filtered)):
                     image_int = tifffile.imread(join(exported_directory,image_file))
                     stacked[n] = image_int.astype('uint16')
                 pixel_size = 0.1625
@@ -284,7 +284,6 @@ def leica_OME_tiff(directory_base, output_directory):
 
                             }
                 tif.write(stacked.astype('uint16'),metadata=metadata)
-
 
 import ashlar.scripts.ashlar as ashlar
 import pathlib
