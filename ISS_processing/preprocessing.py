@@ -448,7 +448,7 @@ def tile_stitched_images(image_path,outpath, tile_dim=2000):
 
     tile_pos.to_csv(outpath+'/'+'tilepos.csv', header=False, index=False)
     return
-def preprocessing_main_leica_new(input_dirs, 
+def preprocessing_main_leica(input_dirs, 
                             output_location,
                             regions_to_process = 2, 
                             align_channel = 4, 
