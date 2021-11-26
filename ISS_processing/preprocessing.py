@@ -9,6 +9,7 @@ import cv2
 import math
 import ashlar.scripts.ashlar as ashlar
 import re
+import mat73
 
 def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_split = 2):
     '''
@@ -393,25 +394,35 @@ def reshape_split(image: np.ndarray, kernel_size: tuple):
     tiled_array = tiled_array.swapaxes(1,2)
     return tiled_array
 
-def tile_stitched_images(image_path,outpath, tile_dim=2000):
+def tile_stitched_images(image_path,outpath, tile_dim=2000, file_type = 'mat'):
     """
     used to tile stitched images
     
     input the directory to the files that you want to tile. 
     
     """
+
     if not os.path.exists(outpath):
             os.makedirs(outpath)
             
     images = os.listdir(image_path)
     images =  [k for k in images if '._' not in k]
     
+    if file_type=='mat':
+        images =  [k for k in images if '.tif.mat' in k] 
+    else: 
+        images =  [k for k in images if '.tif' in k] 
+
     for image_file in images:
         try: 
-            image = tifffile.imread(image_path +'/'+ image_file)
-            
-            cycle = ''.join(filter(str.isdigit, image_file.split('_')[0]))
-            channel = ''.join(filter(str.isdigit, image_file.split('_')[1]))
+            if file_type == 'mat':
+                image = mat73.loadmat(image_path +'/'+ image_file)['I']
+                cycle = ''.join(filter(str.isdigit, image_file.split('_')[1]))
+                channel = ''.join(filter(str.isdigit, image_file.split('_')[2].split('-')[1].split('.')[0]))
+            else:
+                image = tifffile.imread(image_path +'/'+ image_file)
+                cycle = ''.join(filter(str.isdigit, image_file.split('_')[0]))
+                channel = ''.join(filter(str.isdigit, image_file.split('_')[1]))
             print('tiling: ' + image_file)
             
             image_pad = cv2.copyMakeBorder( image, top = 0, bottom =math.ceil(image.shape[0]/tile_dim)*tile_dim-image.shape[0], left =0, right = math.ceil(image.shape[1]/tile_dim)*tile_dim-image.shape[1], borderType = cv2.BORDER_CONSTANT)
