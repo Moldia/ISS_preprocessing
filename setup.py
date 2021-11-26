@@ -24,7 +24,7 @@ setup(
     install_requires=['tifffile', 'scikit-image==0.16.2', 
                     'numpy', 'pandas', 'opencv-python','setuptools',
                     'networkx','scikit-learn','matplotlib','tqdm',
-                    'ashlar','pyjnius==1.3.0','opencv-python'],
+                    'ashlar','pyjnius==1.3.0','opencv-python', 'mat73'],
     keywords=['python', 'spatial transcriptomics', 
             'spatial resolved transcriptomics', 
             'in situ sequencing', 
