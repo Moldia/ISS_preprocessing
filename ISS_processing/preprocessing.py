@@ -1,20 +1,26 @@
 
 
 
+
+
+
 import os
 import pandas as pd
 import tifffile
 import numpy as np
 import cv2
 import math
-import ashlar.scripts.ashlar as ashlar
+#import ashlar.scripts.ashlar as ashlar
 import re
 import mat73
 
-def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_split = 2):
+def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_split = 2, num_channels = 5):
     '''
     using this function is predicated on the fact that you are using the nilsson SOP for naming files. this only works if we have rather small sections. 
     '''
+
+    
+
 
     import tifffile
     import os
@@ -22,11 +28,13 @@ def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_
     import pandas as pd
     import numpy as np
     from xml.dom import minidom
+    from tqdm import tqdm
+
 
     # make directory
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
-    
+
     # find files
     onlyfiles = listdir(exported_directory)
     onlytifs =  [k for k in onlyfiles if '.tif' in k]
@@ -40,16 +48,7 @@ def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_
     rounds = list(np.unique(onlyfiles_split_channel[cycle_split]))
 
     for i, round_number in enumerate(rounds):
-        onlytifs_round_filt = [l for l in onlytifs if '_'+round_number+'_' in l]
-        imgs = []
-        for i in (tiles):
-            stacked = np.empty((5, 2048, 2048))
-            tile_filtered = [k for k in onlytifs_round_filt if i in k]
-            for n,image_file in enumerate(tile_filtered):
-                image_int = tifffile.imread(exported_directory +'/'+image_file)
-                stacked[n] = image_int
-            imgs.append(stacked)
-
+        onlytifs_round_filt = [l for l in onlytifs if 'Base_'+round_number+'_' in l]
         metadatafiles =  [k for k in onlyfiles if 'info.xml' in k]
         metadatafiles_filt =  [k for k in metadatafiles if '_'+round_number+'_' in k]
 
@@ -71,23 +70,35 @@ def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_
             df = pd.DataFrame(dictionary) 
             positions = np.array(df).astype(int)
 
-            pixel_size = 0.1625
-            with tifffile.TiffWriter(output_directory+'/cycle_'+str(round_number)+'.ome.tif', bigtiff=True) as tif:
-                for img, p in zip(imgs, positions.astype(int)):
-                    metadata = {
-                        'Pixels': {
-                            'PhysicalSizeX': pixel_size,
-                            'PhysicalSizeXUnit': 'µm',
-                            'PhysicalSizeY': pixel_size,
-                            'PhysicalSizeYUnit': 'µm'
-                        },
-                        'Plane': {
-                            'PositionX': [p[0]*pixel_size]*img.shape[0],
-                            'PositionY': [p[1]*pixel_size]*img.shape[0]
-                        }
 
-                    }
-                    tif.write(img.astype('uint16'), metadata=metadata)
+        with tifffile.TiffWriter(output_directory+'/cycle_'+str(round_number)+'.ome.tif', bigtiff=True) as tif:
+            for i in tqdm(range(len(sorted(tiles)))):
+                position = positions[i]
+                tile = tiles[i]
+
+                tile_filtered = [k for k in onlytifs_round_filt if 'm'+tile in k]
+                tile_filtered =  [k for k in tile_filtered if '._' not in k]
+                stacked = np.empty((num_channels, 2048, 2048))
+                for n,image_file in enumerate(sorted(tile_filtered)):
+                    image_int = tifffile.imread(join(exported_directory,image_file))
+                    stacked[n] = image_int.astype('uint16')
+                pixel_size = 0.1625
+                metadata = {
+                                'Pixels': {
+                                    'PhysicalSizeX': pixel_size,
+                                    'PhysicalSizeXUnit': 'µm',
+                                    'PhysicalSizeY': pixel_size,
+                                    'PhysicalSizeYUnit': 'µm'
+                                },
+                                'Plane': {
+                                    'PositionX': [position[0]*pixel_size]*stacked.shape[0],
+                                    'PositionY': [position[1]*pixel_size]*stacked.shape[0]
+                                }
+
+                            }
+                tif.write(stacked.astype('uint16'),metadata=metadata)
+
+            
 
 def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048]):
 
@@ -394,7 +405,7 @@ def reshape_split(image: np.ndarray, kernel_size: tuple):
     tiled_array = tiled_array.swapaxes(1,2)
     return tiled_array
 
-def tile_stitched_images(image_path,outpath, tile_dim=2000, file_type = 'mat'):
+def tile_stitched_images(image_path,outpath, tile_dim=2000, file_type = 'tif', old_stiched_name = False):
     """
     used to tile stitched images
     
@@ -413,16 +424,27 @@ def tile_stitched_images(image_path,outpath, tile_dim=2000, file_type = 'mat'):
     else: 
         images =  [k for k in images if '.tif' in k] 
 
-    for image_file in images:
+    for image_file in sorted(images):
         try: 
             if file_type == 'mat':
                 image = mat73.loadmat(image_path +'/'+ image_file)['I']
                 cycle = ''.join(filter(str.isdigit, image_file.split('_')[1]))
                 channel = ''.join(filter(str.isdigit, image_file.split('_')[2].split('-')[1].split('.')[0]))
             else:
-                image = tifffile.imread(image_path +'/'+ image_file)
-                cycle = ''.join(filter(str.isdigit, image_file.split('_')[0]))
-                channel = ''.join(filter(str.isdigit, image_file.split('_')[1]))
+                if old_stiched_name == True:
+                    print('old names')
+                    image = tifffile.imread(image_path +'/'+ image_file)
+                    cycle = str(int(''.join(filter(str.isdigit, image_file.split('_')[1])))-1)
+                    channel = str(int(''.join(filter(str.isdigit, image_file.split('-')[1])))-1)
+                    print(cycle)
+                    print(channel)
+                else: 
+                    image = tifffile.imread(image_path +'/'+ image_file)
+                    cycle = ''.join(filter(str.isdigit, image_file.split('_')[0]))
+                    channel = ''.join(filter(str.isdigit, image_file.split('_')[1]))
+
+           
+            
             print('tiling: ' + image_file)
             
             image_pad = cv2.copyMakeBorder( image, top = 0, bottom =math.ceil(image.shape[0]/tile_dim)*tile_dim-image.shape[0], left =0, right = math.ceil(image.shape[1]/tile_dim)*tile_dim-image.shape[1], borderType = cv2.BORDER_CONSTANT)
@@ -507,6 +529,12 @@ def preprocessing_main_leica(input_dirs,
                                 outpath = path+'/preprocessing/ReslicedTiles/', 
                                 tile_dim=tile_dimension)
     return
+
+
+
+
+
+
 
 
 
