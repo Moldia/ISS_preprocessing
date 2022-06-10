@@ -98,7 +98,6 @@ dependencies:
     - imageio==2.16.1
     - importlib-resources==5.4.0
     - ipywidgets==7.6.5
-    - iss-processing==0.0.0
     - jinja2==3.0.3
     - joblib==1.1.0
     - jsonschema==4.4.0
