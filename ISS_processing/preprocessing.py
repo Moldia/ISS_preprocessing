@@ -134,7 +134,7 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
         tifs =  [k for k in files if 'dw' not in k] # filter for deconvolved images
         tifs =  [k for k in tifs if '.tif' in k]
         tifs =  [k for k in tifs if '.txt' not in k]
-        tifs =  [k for k in tifs if 'Corrected' in k]
+        #tifs =  [k for k in tifs if 'Corrected' in k]
         split_underscore = pd.DataFrame(tifs)[0].str.split('--', expand = True)
         regions_int = list(split_underscore[0].unique())
         regions = []
