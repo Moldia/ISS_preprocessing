@@ -619,12 +619,7 @@ def stack_cycle_images_leica(input_folders, output_folder, cycle=0, image_dimens
     else:
         print('the input needs to be a list of strings to the imaging cycles')
         
- def czi_to_tiff(input_file,
-                outpath,
-                cycle=0,
-                mip=True):
-
-
+def czi_to_tiff(input_file, outpath, cycle=0,mip=True):
     """
     input file = str, specifies the path to the czi file
     outpath = str, specifies the output folder
@@ -721,6 +716,7 @@ def stack_cycle_images_leica(input_folders, output_folder, cycle=0, image_dimens
                                                  'Software': 'tifffile.py'}
 
                                     stack.write(stacked, metadata=metadata)
+                                    
                                     
 def stack_cycle_images_zeiss(input_files, output_folder):
     input_folders=input_files
