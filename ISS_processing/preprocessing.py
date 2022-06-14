@@ -10,6 +10,12 @@ import math
 #import ashlar.scripts.ashlar as ashlar
 import re
 import mat73
+import shutil
+
+def customcopy(src, dst):
+    if os.path.isdir(dst):
+        dst = os.path.join(dst, os.path.basename(src))
+    shutil.copyfile(src, dst)
 
 def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_split = 2, num_channels = 5):
     '''
@@ -172,7 +178,8 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
                     #shutil.copytree(join(i,'Metadata'), join(folder_output,('Base_'+w),'MetaData'))
                     if not os.path.exists(join(folder_output,('Base_'+w),'MetaData')):
                             os.makedirs(join(folder_output,('Base_'+w),'MetaData'))
-                    shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
+                    customcopy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
+                    #shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
                 except FileExistsError:
                     print(' ')
 
