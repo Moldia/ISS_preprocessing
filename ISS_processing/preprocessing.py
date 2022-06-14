@@ -1,9 +1,6 @@
 
 
-
-
-
-
+import ISS_processing.preprocessing as preprocessing
 import os
 import pandas as pd
 import tifffile
@@ -186,28 +183,27 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
                     strings_with_substring = [string for string in os.listdir(folder_output +'/Base_'+w) if str(tile_for_name) in string]
 
                     # ENSURE THAT WE DO NOT CREATE FILES THAT HAVE ALREADY BEEN CREATED
-                    #if len(strings_with_substring) < 4:
-                    tifs_base_tile = [k for k in tifs_filt if str(tile)+'--' in k]
-                    for å,z in enumerate(sorted(list(channels))):
-                        tifs_base_tile_channel = [k for k in tifs_base_tile if str(z) in k]
-                        # DEFINE IMAGE TO USE AS GROUND ZERO 
-                        maxi = np.zeros((image_dimension[0],image_dimension[1]))
-                        for n,q in enumerate(tifs_base_tile_channel):
-                            
-                            try:
-                                im_array = imread(i + '/' +q)
-                            except:
-                                print('image corrupted, reading black file instead.')
-                                im_array = np.zeros((image_dimension[0],image_dimension[1]))
+                    if len(strings_with_substring) < 5:
+                        tifs_base_tile = [k for k in tifs_filt if str(tile)+'--' in k]
+                        for å,z in enumerate(sorted(list(channels))):
+                            tifs_base_tile_channel = [k for k in tifs_base_tile if str(z) in k]
+                            # DEFINE IMAGE TO USE AS GROUND ZERO 
+                            maxi = np.zeros((image_dimension[0],image_dimension[1]))
+                            for n,q in enumerate(tifs_base_tile_channel):
 
-                            inds = im_array > maxi # find where image intensity > max intensity
-                            maxi[inds] = im_array[inds]
-                        maxi = maxi.astype('uint16')
-                        # WRITE FILE
-                        tifffile.imwrite(folder_output +'/Base_'+w+'/Base_'+w+'_s'+str(tile_for_name)+'_'+z, maxi)
-                    #else: 
-                    #    continue
+                                try:
+                                    im_array = imread(i + '/' +q)
+                                except:
+                                    print('image corrupted, reading black file instead.')
+                                    im_array = np.zeros((image_dimension[0],image_dimension[1]))
 
+                                inds = im_array > maxi # find where image intensity > max intensity
+                                maxi[inds] = im_array[inds]
+                            maxi = maxi.astype('uint16')
+                            # WRITE FILE
+                            tifffile.imwrite(folder_output +'/Base_'+w+'/Base_'+w+'_s'+str(tile_for_name)+'_'+z, maxi)
+                    else: 
+                        continue
 def leica_OME_tiff(directory_base, output_directory):
 
     import tifffile
@@ -251,13 +247,14 @@ def leica_OME_tiff(directory_base, output_directory):
         metadatafiles =  [k for k in metadatafiles if 'IOManagerConfiguation.xlif' not in k]
 
         for p, meta in enumerate(metadatafiles):
+            print(meta)
             mydoc = minidom.parse(join(exported_directory, 'MetaData',meta) )
             tile =[]
             x =[]
             y =[]
             items = mydoc.getElementsByTagName('Tile')
-            for elem in items:
-                tile.append(int(elem.attributes['FieldX'].value))
+            for el, elem in enumerate(items):
+                tile.append(el)
                 x.append(float(elem.attributes['PosX'].value))
                 y.append(float(elem.attributes['PosY'].value))
             unique_tiles = list(np.unique(tile))
@@ -269,6 +266,7 @@ def leica_OME_tiff(directory_base, output_directory):
             df['x'] =((df.x-np.min(df.x))/.000000321) + 1
             df['y'] =((df.y-np.min(df.y))/.000000321) + 1
             positions = np.array(df).astype(int)
+            df.to_csv(directory_base +'/'+ folder + '/coords.csv')
             
         with tifffile.TiffWriter((output_directory +'/'+ folder + '.ome.tiff'), bigtiff=True) as tif:
             for i in tqdm(range(len(tiles))):
@@ -277,9 +275,13 @@ def leica_OME_tiff(directory_base, output_directory):
 
                 tile_filtered = [k for k in onlytifs if 's'+tile+'_' in k]
                 tile_filtered =  [k for k in tile_filtered if '._' not in k]
+
                 stacked = np.empty((5, 2048, 2048))
                 for n,image_file in enumerate(sorted(tile_filtered)):
-                    image_int = tifffile.imread(join(exported_directory,image_file))
+                    try: 
+                        image_int = tifffile.imread(join(exported_directory,image_file))
+                    except IndexError: 
+                        image_int = np.empty((2048, 2048))
                     stacked[n] = image_int.astype('uint16')
                 pixel_size = 0.1625
                 metadata = {
@@ -296,6 +298,7 @@ def leica_OME_tiff(directory_base, output_directory):
 
                             }
                 tif.write(stacked.astype('uint16'),metadata=metadata)
+
 
 import ashlar.scripts.ashlar as ashlar
 import pathlib
@@ -479,12 +482,11 @@ def preprocessing_main_leica(input_dirs,
                             tile_dimension = 6000, 
                             mip = True):
 
-    import ISS_processing.preprocessing as preprocessing
     import os
     import pandas as pd
     
     if mip == True:
-        preprocessing.leica_mipping(input_dirs=input_dirs, output_dir_prefix = output_location)
+        leica_mipping(input_dirs=input_dirs, output_dir_prefix = output_location)
     else: 
         print('not mipping')
         
@@ -529,6 +531,7 @@ def preprocessing_main_leica(input_dirs,
                                 outpath = path+'/preprocessing/ReslicedTiles/', 
                                 tile_dim=tile_dimension)
     return
+
 
 
 def stack_cycle_images_leica(input_folders, output_folder, cycle=0, image_dimensions = [2048,2048], output_image_type = 'uint16'):
@@ -616,7 +619,7 @@ def stack_cycle_images_leica(input_folders, output_folder, cycle=0, image_dimens
     else:
         print('the input needs to be a list of strings to the imaging cycles')
         
-  def czi_to_tiff(input_file,
+ def czi_to_tiff(input_file,
                 outpath,
                 cycle=0,
                 mip=True):
