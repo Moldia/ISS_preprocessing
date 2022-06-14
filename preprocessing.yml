@@ -15,16 +15,16 @@ dependencies:
   - jupyterlab_server=2.10.3
   - ncurses=6.3
   - notebook=6.4.8
-  - openjdk=8.0.312=h7f98852_0
-  - openssl=1.1.1m=h7f8727e_0
+  - openjdk=8.0.312
+  - openssl=1.1.1m
   - python=3.8.12
   - python-dateutil=2.8.1
-  - pyzmq=19.0.2=py38he6710b0_1
-  - readline=8.1.2=h7f8727e_1
+  - pyzmq=19.0.2
+  - readline=8.1.2
   - requests=2.27.1
   - setuptools=58.0.4
   - six=1.15.0=py_0
-  - sqlite=3.37.2=hc218d9a_0
+  - sqlite=3.37.2
   - urllib3=1.26.8
   - wcwidth=0.2.5
   - websocket-client=0.58.0
