@@ -88,6 +88,7 @@ dependencies:
   - zipp=3.7.0=pyhd3eb1b0_0
   - zlib=1.2.11=h7f8727e_4
   - pip:
+    - aicspylibczi==3.0.5
     - ashlar==1.13.1
     - blessed==1.19.1
     - cycler==0.11.0
