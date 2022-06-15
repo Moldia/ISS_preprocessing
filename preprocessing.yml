@@ -4,6 +4,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
+  - pip
   - ipykernel=5.3.4
   - ipython=7.18.1
   - ipython_genutils=0.2.0
