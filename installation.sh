@@ -20,7 +20,7 @@ python -m ipykernel install --user --name= "2_ISS_decoding"
 conda deactivate
 cd ..
 
-git clone -b dev_branch https://github.com/Moldia/ISS_postprocessing
+git clone https://github.com/Moldia/ISS_postprocessing
 cd ISS_postprocessing
 conda env create --file 'postprocessing.yml' --name 3_ISS_postprocessing
 conda activate 3_ISS_postprocessing
