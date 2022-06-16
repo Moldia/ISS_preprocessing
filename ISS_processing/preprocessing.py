@@ -1,9 +1,6 @@
 
 
-
-
-
-
+import ISS_processing.preprocessing as preprocessing
 import os
 import pandas as pd
 import tifffile
@@ -13,6 +10,12 @@ import math
 #import ashlar.scripts.ashlar as ashlar
 import re
 import mat73
+import shutil
+
+def customcopy(src, dst):
+    if os.path.isdir(dst):
+        dst = os.path.join(dst, os.path.basename(src))
+    shutil.copyfile(src, dst)
 
 def zen_OME_tiff(exported_directory, output_directory, channel_split = 3, cycle_split = 2, num_channels = 5):
     '''
@@ -134,7 +137,7 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
         tifs =  [k for k in files if 'dw' not in k] # filter for deconvolved images
         tifs =  [k for k in tifs if '.tif' in k]
         tifs =  [k for k in tifs if '.txt' not in k]
-        tifs =  [k for k in tifs if 'Corrected' in k]
+        #tifs =  [k for k in tifs if 'Corrected' in k]
         split_underscore = pd.DataFrame(tifs)[0].str.split('--', expand = True)
         regions_int = list(split_underscore[0].unique())
         regions = []
@@ -175,7 +178,8 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
                     #shutil.copytree(join(i,'Metadata'), join(folder_output,('Base_'+w),'MetaData'))
                     if not os.path.exists(join(folder_output,('Base_'+w),'MetaData')):
                             os.makedirs(join(folder_output,('Base_'+w),'MetaData'))
-                    shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
+                    customcopy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
+                    #shutil.copy(file_to_copy, join(folder_output,('Base_'+w),'MetaData'))
                 except FileExistsError:
                     print(' ')
 
@@ -186,28 +190,27 @@ def leica_mipping(input_dirs, output_dir_prefix, image_dimension = [2048, 2048])
                     strings_with_substring = [string for string in os.listdir(folder_output +'/Base_'+w) if str(tile_for_name) in string]
 
                     # ENSURE THAT WE DO NOT CREATE FILES THAT HAVE ALREADY BEEN CREATED
-                    #if len(strings_with_substring) < 4:
-                    tifs_base_tile = [k for k in tifs_filt if str(tile)+'--' in k]
-                    for å,z in enumerate(sorted(list(channels))):
-                        tifs_base_tile_channel = [k for k in tifs_base_tile if str(z) in k]
-                        # DEFINE IMAGE TO USE AS GROUND ZERO 
-                        maxi = np.zeros((image_dimension[0],image_dimension[1]))
-                        for n,q in enumerate(tifs_base_tile_channel):
-                            
-                            try:
-                                im_array = imread(i + '/' +q)
-                            except:
-                                print('image corrupted, reading black file instead.')
-                                im_array = np.zeros((image_dimension[0],image_dimension[1]))
+                    if len(strings_with_substring) < 5:
+                        tifs_base_tile = [k for k in tifs_filt if str(tile)+'--' in k]
+                        for å,z in enumerate(sorted(list(channels))):
+                            tifs_base_tile_channel = [k for k in tifs_base_tile if str(z) in k]
+                            # DEFINE IMAGE TO USE AS GROUND ZERO 
+                            maxi = np.zeros((image_dimension[0],image_dimension[1]))
+                            for n,q in enumerate(tifs_base_tile_channel):
 
-                            inds = im_array > maxi # find where image intensity > max intensity
-                            maxi[inds] = im_array[inds]
-                        maxi = maxi.astype('uint16')
-                        # WRITE FILE
-                        tifffile.imwrite(folder_output +'/Base_'+w+'/Base_'+w+'_s'+str(tile_for_name)+'_'+z, maxi)
-                    #else: 
-                    #    continue
+                                try:
+                                    im_array = imread(i + '/' +q)
+                                except:
+                                    print('image corrupted, reading black file instead.')
+                                    im_array = np.zeros((image_dimension[0],image_dimension[1]))
 
+                                inds = im_array > maxi # find where image intensity > max intensity
+                                maxi[inds] = im_array[inds]
+                            maxi = maxi.astype('uint16')
+                            # WRITE FILE
+                            tifffile.imwrite(folder_output +'/Base_'+w+'/Base_'+w+'_s'+str(tile_for_name)+'_'+z, maxi)
+                    else: 
+                        continue
 def leica_OME_tiff(directory_base, output_directory):
 
     import tifffile
@@ -251,13 +254,14 @@ def leica_OME_tiff(directory_base, output_directory):
         metadatafiles =  [k for k in metadatafiles if 'IOManagerConfiguation.xlif' not in k]
 
         for p, meta in enumerate(metadatafiles):
+            print(meta)
             mydoc = minidom.parse(join(exported_directory, 'MetaData',meta) )
             tile =[]
             x =[]
             y =[]
             items = mydoc.getElementsByTagName('Tile')
-            for elem in items:
-                tile.append(int(elem.attributes['FieldX'].value))
+            for el, elem in enumerate(items):
+                tile.append(el)
                 x.append(float(elem.attributes['PosX'].value))
                 y.append(float(elem.attributes['PosY'].value))
             unique_tiles = list(np.unique(tile))
@@ -269,6 +273,7 @@ def leica_OME_tiff(directory_base, output_directory):
             df['x'] =((df.x-np.min(df.x))/.000000321) + 1
             df['y'] =((df.y-np.min(df.y))/.000000321) + 1
             positions = np.array(df).astype(int)
+            df.to_csv(directory_base +'/'+ folder + '/coords.csv')
             
         with tifffile.TiffWriter((output_directory +'/'+ folder + '.ome.tiff'), bigtiff=True) as tif:
             for i in tqdm(range(len(tiles))):
@@ -277,9 +282,13 @@ def leica_OME_tiff(directory_base, output_directory):
 
                 tile_filtered = [k for k in onlytifs if 's'+tile+'_' in k]
                 tile_filtered =  [k for k in tile_filtered if '._' not in k]
+
                 stacked = np.empty((5, 2048, 2048))
                 for n,image_file in enumerate(sorted(tile_filtered)):
-                    image_int = tifffile.imread(join(exported_directory,image_file))
+                    try: 
+                        image_int = tifffile.imread(join(exported_directory,image_file))
+                    except IndexError: 
+                        image_int = np.empty((2048, 2048))
                     stacked[n] = image_int.astype('uint16')
                 pixel_size = 0.1625
                 metadata = {
@@ -296,6 +305,7 @@ def leica_OME_tiff(directory_base, output_directory):
 
                             }
                 tif.write(stacked.astype('uint16'),metadata=metadata)
+
 
 import ashlar.scripts.ashlar as ashlar
 import pathlib
@@ -479,12 +489,11 @@ def preprocessing_main_leica(input_dirs,
                             tile_dimension = 6000, 
                             mip = True):
 
-    import ISS_processing.preprocessing as preprocessing
     import os
     import pandas as pd
     
     if mip == True:
-        preprocessing.leica_mipping(input_dirs=input_dirs, output_dir_prefix = output_location)
+        leica_mipping(input_dirs=input_dirs, output_dir_prefix = output_location)
     else: 
         print('not mipping')
         
@@ -532,6 +541,201 @@ def preprocessing_main_leica(input_dirs,
 
 
 
+def stack_cycle_images_leica(input_folders, output_folder, cycle=0, image_dimensions = [2048,2048], output_image_type = 'uint16'):
+    
+    """
+    input_folders: a list of strings pointing to the folders were the cycle data is. needs to be in the correct order,
+    i.e. cycle 1 before cycle 2 etc
+    
+    output_folder: main folder for stacked images, will create subfolders
+    
+    image_dimesions: the dimensions of your images in pixels (x and y)
+    
+    output_image_type: the 
+    
+    """
+    
+    
+    if type(input_folders) == list and len(input_folders) > 0:
+        for cyc, folder in enumerate(input_folders):
+            if cycle==0:
+                outpath = output_folder + '/stacked/cycle'+ str(cyc+1+cycle)
+            else:
+                outpath = output_folder + '/stacked/cycle'+ str(cyc+cycle)
+            files = os.listdir(folder)
+            files_filtered =  [k for k in files if '.tif' in k]
+            filesDF = pd.DataFrame(files_filtered)
+            regions = filesDF[0].str.split('--',expand = True)[0]
+            tiles = filesDF[0].str.split('--',expand = True)[1]
+            channels = filesDF[0].str.split('--',expand = True)[3]
+            z_planes = filesDF[0].str.split('--',expand = True)[2]
+            newDF= pd.DataFrame(np.column_stack([regions, channels, tiles, z_planes]), 
+                               columns=['Regions', 'Channels', 'Tiles', 'Zplanes'])
+            #removes .tif from the Channels column
+            newDF['Channels'] = newDF['Channels'] .str.replace('.tif', '')
+            uniqueReg=newDF["Regions"].unique()
+            uniqueCh=newDF["Channels"].unique()
+            uniqueTiles=newDF["Tiles"].unique()
+            uniqueZ=newDF["Zplanes"].unique()
+            len(uniqueZ)
+            zsize=len(uniqueZ)
+            try:
+                # Create target Directory
+                os.makedirs(outpath)
+                print("Directory " , outpath ,  " Created ") 
+            except FileExistsError:
+                print("Directory " , outpath ,  " already exists")
+                
+            filenames=[]
+            for r in uniqueReg:
+                #print (r)
+                ROI=newDF[newDF["Regions"] == r]
+                for ch in uniqueCh:
+                    print (ch)
+                    COI= ROI[ROI['Channels']==ch]
+                    for ut in uniqueTiles:
+                        print (ut)
+                        st=COI[COI['Tiles']==ut]
+                        #print (st['Zplanes'])
+                        filenews = st["Regions"]+'--'+ st["Tiles"]+'--'+st['Zplanes']+'--'+st['Channels']+'.tif'
+                        filenews.sort_values(inplace=True)
+                        stackname = 'stacked_'+r+'--'+ ut+'--'+ ch+'.tif'
+                        with tifffile.TiffWriter(outpath+'/'+stackname, bigtiff=True) as stack:
+                            stacked = np.empty((zsize, image_dimensions[0], image_dimensions[1]))
+                            for n, filename in enumerate(filenews):
+                                image_int = tifffile.imread(folder + '/' + filename)
+                                stacked[n] = image_int.astype(output_image_type)
+
+                            metadata =  {'ImageWidth': image_dimensions[0],
+                                         'ImageLength': image_dimensions[1],
+                                         'BitsPerSample': 16,
+                                         'ImageDescription': '{"shape": [zsize, image_dimensions[0], image_dimensions[1]]}',
+                                         'Axes': 'ZYX',
+                                         'StripOffsets': (368,),
+                                         'SamplesPerPixel': 1,
+                                         'RowsPerStrip': image_dimensions[0],
+                                         'StripByteCounts': (8388608,),
+                                         'XResolution': (1, 1),
+                                         'YResolution': (1, 1),
+                                         'Software': 'tifffile.py'}
+
+                            stack.save(stacked, metadata=metadata)
+                        print ('now saving the stack for:', ch, ut)
+
+
+    else:
+        print('the input needs to be a list of strings to the imaging cycles')
+        
+def czi_to_tiff(input_file, outpath, cycle=0,mip=True):
+    """
+    input file = str, specifies the path to the czi file
+    outpath = str, specifies the output folder
+    cycle = int, specify the cycle number the file refers to
+
+    """
+    # opens the file and extract dimensions
+    czi = aicspylibczi.CziFile(input_file)
+    dimensions = czi.get_dims_shape() 
+    chsize=dimensions[0]['C'][1]
+    msize=dimensions[0]['M'][1]
+    ssize=dimensions[0]['S'][1]
+    
+    
+    
+    # Initialise placeholders for XY coordinates of the tiles. 
+    # loop through tiles and extract the absolute XY coordinates
+    Bxcoord=[]
+    Bycoord=[]
+    Btile_index=[]
+
+    for m in range(0, msize):
+        meta=czi.get_mosaic_tile_bounding_box(M=m, Z=0, C=0)
+        StartX=meta.x
+        StartY=meta.y
+        Bxcoord.append(StartX)
+        Bycoord.append(StartY)
+        Btile_index.append(m)
+        #print(m)
+    # Transforms the XY coordinates into absolute values, 
+    # by subtracting the minimum x and y value respectively to all the data
+    nBxcord = [x - min(Bxcoord) for x in Bxcoord]
+    nBycord = [x - min(Bycoord) for x in Bycoord]
+    tiles_coordinates = pd.DataFrame(list(zip(Btile_index, nBxcord, nBycord)),
+               columns =['tile','x', 'y'])
+    if mip==True:
+        if cycle != 0:
+            
+            # creates output folders
+            outpath=outpath+'/preprocessing/mipped/Base_'+str(cycle)+'/'
+            if not os.path.exists(outpath):
+                    os.makedirs(outpath)
+            tiles_coordinates.to_csv(outpath+'tile_coordinates.csv') 
+
+            for s in range (0, ssize):
+                for m in range(0, msize): #loops through tile index
+                    for ch in range (0, chsize):    #loops through channel index
+                        img, shp = czi.read_image(M=m, C=ch)
+                        IM_MAX= np.max(img, axis=3)
+                        IM_MAX=np.squeeze(IM_MAX, axis=(0,1,2,3))
+                        if m < 10:
+                            n=str(0)+str(m)
+                        #filename='TileScan '+str(s)+'_Corrected'+'--Stage'+str(n)+'--C0'+str(ch)+'.tif'
+
+                        filename = 'Base_'+str(cycle)+'_s'+n+'_C0'+str(ch)+'.tif' #Base_1_s01_C00.tif
+
+                        tifffile.imwrite(outpath+filename, IM_MAX.astype('uint16'))
+                        print (filename)
+        else:
+            print ('Warning, you have not specified the cycle number, this is required for the mipping function')
+
+    else:
+        xsize=dimensions[0]['X'][1]
+        ysize=dimensions[0]['Y'][1]
+        zsize=dimensions[0]['Z'][1]
+        
+        if cycle !=0:
+            print ('Cycle argument is ignored when mip=False')
+        if not os.path.exists(outpath):
+            os.makedirs(outpath)
+        tiles_coordinates.to_csv(outpath+'tile_coordinates.csv') 
+
+        for s in range (0, ssize):
+            for m in range(0, msize): #loops through tile index
+                for ch in range (0, chsize):    #loops through channel index
+                    img, shp = czi.read_image(M=m, C=ch)
+                    stack_container=np.squeeze(img, axis=(0,1,2,4))
+                    if m < 10:
+                        n=str(0)+str(m)
+                    filename='stacked_TileScan '+str(s)+'_Corrected'+'--Stage'+str(n)+'--C0'+str(ch)+'.tif' #ASK CHRISTOFFER FOR NAMING 
+                    with tifffile.TiffWriter(outpath+'/'+filename, bigtiff=True) as stack:
+                                    stacked = stack_container
+                                    metadata =  {'ImageWidth': xsize,
+                                                 'ImageLength': ysize,
+                                                 'BitsPerSample': 16,                                        
+                                                 'ImageDescription': '{"shape": [zsize, xsize, ysize]}',
+                                                 'Axes': 'ZYX',
+                                                 'StripOffsets': (368,),
+                                                 'SamplesPerPixel': 1,
+                                                 'RowsPerStrip': xsize,
+                                                 'StripByteCounts': (8388608,),
+                                                 'XResolution': (1, 1),
+                                                 'YResolution': (1, 1),
+                                                 'Software': 'tifffile.py'}
+
+                                    stack.write(stacked, metadata=metadata)
+                                    
+                                    
+def stack_cycle_images_zeiss(input_files, output_folder):
+    input_folders=input_files
+    if type(input_folders) == list and len(input_folders) > 0:
+        for cyc, folder in enumerate(input_folders):
+            print ('Processing cycle'+ str(cyc+1))
+            input_file=input_folders[cyc]
+            outpath = output_folder + '/stacked/cycle'+ str(cyc+1)
+            czi_to_tiff(input_file,
+                outpath,
+                cycle=0,
+                mip=False)
 
 
 
