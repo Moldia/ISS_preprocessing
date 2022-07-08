@@ -554,6 +554,11 @@ def stack_cycle_images_leica(input_folders, output_folder, cycle=0, image_dimens
     output_image_type: the 
     
     """
+    import aicspylibczi
+    import pandas as pd
+    import os
+    import numpy as np
+    import tifffile
     
     
     if type(input_folders) == list and len(input_folders) > 0:
@@ -637,7 +642,10 @@ def czi_to_tiff(input_file, outpath, cycle=0,mip=True):
     czi = aicspylibczi.CziFile(input_file)
     dimensions = czi.get_dims_shape() 
     chsize=dimensions[0]['C'][1]
-    msize=dimensions[0]['M'][1]
+    try:
+        msize=dimensions[0]['M'][1]
+    except:
+        msize=0    
     ssize=dimensions[0]['S'][1]
     
     
@@ -672,19 +680,32 @@ def czi_to_tiff(input_file, outpath, cycle=0,mip=True):
             tiles_coordinates.to_csv(outpath+'tile_coordinates.csv') 
 
             for s in range (0, ssize):
-                for m in range(0, msize): #loops through tile index
+                if msize==0:
                     for ch in range (0, chsize):    #loops through channel index
-                        img, shp = czi.read_image(M=m, C=ch)
+                        img, shp = czi.read_image(C=ch)
                         IM_MAX= np.max(img, axis=3)
-                        IM_MAX=np.squeeze(IM_MAX, axis=(0,1,2,3))
-                        if m < 10:
-                            n=str(0)+str(m)
+                        IM_MAX=np.squeeze(IM_MAX, axis=(0,1,2))
+                        n='00'
                         #filename='TileScan '+str(s)+'_Corrected'+'--Stage'+str(n)+'--C0'+str(ch)+'.tif'
 
                         filename = 'Base_'+str(cycle)+'_s'+n+'_C0'+str(ch)+'.tif' #Base_1_s01_C00.tif
 
                         tifffile.imwrite(outpath+filename, IM_MAX.astype('uint16'))
                         print (filename)
+                else:    
+                    for m in range(0, msize): #loops through tile index
+                        for ch in range (0, chsize):    #loops through channel index
+                            img, shp = czi.read_image(M=m, C=ch)
+                            IM_MAX= np.max(img, axis=3)
+                            IM_MAX=np.squeeze(IM_MAX, axis=(0,1,2,3))
+                            if m < 10:
+                                n=str(0)+str(m)
+                            #filename='TileScan '+str(s)+'_Corrected'+'--Stage'+str(n)+'--C0'+str(ch)+'.tif'
+
+                            filename = 'Base_'+str(cycle)+'_s'+n+'_C0'+str(ch)+'.tif' #Base_1_s01_C00.tif
+
+                            tifffile.imwrite(outpath+filename, IM_MAX.astype('uint16'))
+                            print (filename)
         else:
             print ('Warning, you have not specified the cycle number, this is required for the mipping function')
 
