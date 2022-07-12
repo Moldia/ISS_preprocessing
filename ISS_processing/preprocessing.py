@@ -638,6 +638,9 @@ def czi_to_tiff(input_file, outpath, cycle=0,mip=True):
     cycle = int, specify the cycle number the file refers to
 
     """
+    
+    import aicspylibczi
+    
     # opens the file and extract dimensions
     czi = aicspylibczi.CziFile(input_file)
     dimensions = czi.get_dims_shape() 
@@ -721,12 +724,20 @@ def czi_to_tiff(input_file, outpath, cycle=0,mip=True):
         tiles_coordinates.to_csv(outpath+'tile_coordinates.csv') 
 
         for s in range (0, ssize):
-            for m in range(0, msize): #loops through tile index
+            
+            if msize==0:
+                
+                print('Single tile')
+                
                 for ch in range (0, chsize):    #loops through channel index
-                    img, shp = czi.read_image(M=m, C=ch)
-                    stack_container=np.squeeze(img, axis=(0,1,2,4))
-                    if m < 10:
-                        n=str(0)+str(m)
+
+                    print('channel: ', ch)
+
+                    img, shp = czi.read_image(C=ch)
+
+                    stack_container=np.squeeze(img, axis=(0,1,2))
+                    n='00'
+
                     filename='stacked_TileScan '+str(s)+'_Corrected'+'--Stage'+str(n)+'--C0'+str(ch)+'.tif' #ASK CHRISTOFFER FOR NAMING 
                     with tifffile.TiffWriter(outpath+'/'+filename, bigtiff=True) as stack:
                                     stacked = stack_container
@@ -744,8 +755,37 @@ def czi_to_tiff(input_file, outpath, cycle=0,mip=True):
                                                  'Software': 'tifffile.py'}
 
                                     stack.write(stacked, metadata=metadata)
-                                    
-                                    
+
+            else:
+                for m in range(0, msize): #loops through tile index
+                    for ch in range (0, chsize):    #loops through channel index
+                        
+                        print('channel: ', ch)
+                        
+                        img, shp = czi.read_image(M=m, C=ch)
+                                                
+                        stack_container=np.squeeze(img, axis=(0,1,2,4))
+                        if m < 10:
+                            n=str(0)+str(m)
+                        filename='stacked_TileScan '+str(s)+'_Corrected'+'--Stage'+str(n)+'--C0'+str(ch)+'.tif' #ASK CHRISTOFFER FOR NAMING 
+                        with tifffile.TiffWriter(outpath+'/'+filename, bigtiff=True) as stack:
+                                        stacked = stack_container
+                                        metadata =  {'ImageWidth': xsize,
+                                                     'ImageLength': ysize,
+                                                     'BitsPerSample': 16,                                        
+                                                     'ImageDescription': '{"shape": [zsize, xsize, ysize]}',
+                                                     'Axes': 'ZYX',
+                                                     'StripOffsets': (368,),
+                                                     'SamplesPerPixel': 1,
+                                                     'RowsPerStrip': xsize,
+                                                     'StripByteCounts': (8388608,),
+                                                     'XResolution': (1, 1),
+                                                     'YResolution': (1, 1),
+                                                     'Software': 'tifffile.py'}
+
+                                        stack.write(stacked, metadata=metadata)
+
+
 def stack_cycle_images_zeiss(input_files, output_folder):
     input_folders=input_files
     if type(input_folders) == list and len(input_folders) > 0:
