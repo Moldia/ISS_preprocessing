@@ -624,7 +624,7 @@ def stack_cycle_images_leica(input_folders, output_folder, cycle=0, image_dimens
                                          'YResolution': (1, 1),
                                          'Software': 'tifffile.py'}
 
-                            stack.save(stacked, metadata=metadata)
+                            stack.save(stacked.astype('uint16'), metadata=metadata)
                         print ('now saving the stack for:', ch, ut)
 
 
