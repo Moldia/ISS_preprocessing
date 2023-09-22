@@ -225,7 +225,7 @@ def leica_OME_tiff(directory_base, output_directory):
     None. Writes the OME-TIFF images to the designated output directory.
     """
     
-   import tifffile
+    import tifffile
     import numpy as np
     import os
     from os.path import join
