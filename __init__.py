@@ -6,5 +6,4 @@ from ISS_processing.preprocessing import (zen_OME_tiff,
                                             leica_mipping,
                                             leica_OME_tiff,
                                             tile_stitched_images, 
-                                            preprocessing_main_leica,
-                                         czi_to_tiff)
+                                            preprocessing_main_leica)
