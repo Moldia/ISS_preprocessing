@@ -424,7 +424,7 @@ def ashlar_wrapper(
 
 
 def reshape_split(image: np.ndarray, kernel_size: tuple):
-        """
+    """
     Reshape the input image into smaller tiles of specified size.
     
     Args:
@@ -444,6 +444,7 @@ def reshape_split(image: np.ndarray, kernel_size: tuple):
     
     tiled_array = tiled_array.swapaxes(1,2)
     return tiled_array
+
     
 
 
